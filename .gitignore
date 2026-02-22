@@ -1,5 +1,2 @@
+# Rust build directory - inutile, recréer à chaque compilation
 /target
-
-.DS_Store
-
-.idea/RustOS.iml
