@@ -166,3 +166,31 @@ pub fn _print(args: fmt::Arguments) {
     // .unwrap() panique si l'écriture échoue (ce qui ne devrait pas arriver ici)
     WRITER.lock().write_fmt(args).unwrap();
 }
+
+//implémentation de test pour vérifier si println fonctionne sans faire de Panic.
+#[test_case]
+fn test_println_simple() {
+    println!("test_println_simple output");
+}
+
+//test ici sur plusieurs lignes
+#[test_case]
+fn test_println_many() {
+    for _ in 0..200 {
+        println!("test_println_many output");
+    }
+}
+
+//vérification que les println sont bien sur l'écran
+/*
+La fonction va définir une chaine de caractères, va l'afficher avec println!, parcourir les caractères affichés à l'écran. La chaine devrait apparaitre à la ligne "BUFFER_HEIGHT - 2".
+ */
+#[test_case]
+fn test_println_output() {
+    let s = "Test string on a single line";
+    println!("{}", s);
+    for (i, c) in s.chars().enumerate() {
+        let screen_char = WRITER.lock().buffer.chars[BUFFER_HEIGHT - 2][i].read();
+        assert_eq!(char::from(screen_char.ascii_character), c);
+    }
+}
