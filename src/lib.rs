@@ -3,10 +3,12 @@
 #![feature(custom_test_frameworks)]
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
+#![feature(abi_x86_interrupt)]
 
 use core::panic::PanicInfo;
 pub mod serial;
 pub mod vga_buffer;
+pub mod interrupts;
 
 //trait Testable pour l'automatisation des affichages dans les tests
 pub trait Testable {
@@ -41,14 +43,6 @@ pub fn test_panic_handler(info: &PanicInfo) -> ! {
     loop {}
 }
 
-//Point d'entrée pour cargo test
-#[cfg(test)]
-#[unsafe(no_mangle)]
-pub extern "C" fn _start() -> ! {
-    test_main();
-    loop {}
-}
-
 // Appel panic pour les tests
 #[cfg(test)]
 #[panic_handler]
@@ -71,4 +65,19 @@ pub fn exit_qemu(exit_code: QemuExitCode) {
         let mut port = Port::new(0xf4);
         port.write(exit_code as u32);
     }
+}
+
+//fonction d'initalisation de la IDT dans le processeur
+pub fn init() {
+    interrupts::init_idt();
+}
+
+//Point d'entrée pour cargo test
+//on s'assurer d'initialiser la IDT pour que les tests ne crashent pas
+#[cfg(test)]
+#[unsafe(no_mangle)]
+pub extern "C" fn _start() -> ! {
+    init();
+    test_main();
+    loop {}
 }
