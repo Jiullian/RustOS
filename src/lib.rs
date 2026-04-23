@@ -9,6 +9,7 @@ use core::panic::PanicInfo;
 pub mod serial;
 pub mod vga_buffer;
 pub mod interrupts;
+pub mod gdt;
 
 //trait Testable pour l'automatisation des affichages dans les tests
 pub trait Testable {
@@ -67,8 +68,9 @@ pub fn exit_qemu(exit_code: QemuExitCode) {
     }
 }
 
-//fonction d'initalisation de la IDT dans le processeur
+//fonction d'initalisation de la GDT (pile de secours) et de l'IDT (handler d'exceptions) (dépend de la GDT).
 pub fn init() {
+    gdt::init();
     interrupts::init_idt();
 }
 
@@ -81,3 +83,4 @@ pub extern "C" fn _start() -> ! {
     test_main();
     loop {}
 }
+
