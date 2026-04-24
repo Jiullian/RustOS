@@ -18,12 +18,11 @@ pub extern "C" fn _start() -> ! {
     println!("Hello World{}", "!");
 
     RustOS::init();
-
     #[cfg(test)]
     test_main();
 
     println!("No crash! ;)");
-    loop {}
+    RustOS::hlt_loop();
 }
 
 // Fonction appelée lors de chaque panic.
@@ -31,7 +30,7 @@ pub extern "C" fn _start() -> ! {
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     println!("ERROR ---> {}", info);
-    loop {}
+    RustOS::hlt_loop()
 }
 
 #[cfg(test)]
