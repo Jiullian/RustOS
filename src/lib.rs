@@ -6,10 +6,25 @@
 #![feature(abi_x86_interrupt)]
 
 use core::panic::PanicInfo;
+pub mod gdt;
+pub mod interrupts;
+pub mod memory;
 pub mod serial;
 pub mod vga_buffer;
-pub mod interrupts;
-pub mod gdt;
+
+#[cfg(test)]
+use bootloader::{BootInfo, entry_point};
+
+#[cfg(test)]
+entry_point!(test_kernel_main);
+
+#[cfg(test)]
+fn test_kernel_main(_boot_info: &'static BootInfo) -> ! {
+    // like before
+    init();
+    test_main();
+    hlt_loop();
+}
 
 //trait Testable pour l'automatisation des affichages dans les tests
 pub trait Testable {
@@ -29,7 +44,8 @@ where
 }
 
 // Un custom framework pour les tests du kernel
-pub fn test_runner(tests: &[&dyn Testable]) { // <- &[&dyn Fn()] est un slice de "Trait Objects" de la function Fn() trait
+pub fn test_runner(tests: &[&dyn Testable]) {
+    // <- &[&dyn Fn()] est un slice de "Trait Objects" de la function Fn() trait
     serial_println!("Running {} tests", tests.len());
     for test in tests {
         test.run();
@@ -76,15 +92,6 @@ pub fn init() {
     x86_64::instructions::interrupts::enable();
 }
 
-//Point d'entrée pour cargo test
-//on s'assurer d'initialiser la IDT pour que les tests ne crashent pas
-#[cfg(test)]
-#[unsafe(no_mangle)]
-pub extern "C" fn _start() -> ! {
-    init();
-    test_main();
-    hlt_loop();
-}
 
 pub fn hlt_loop() -> ! {
     loop {
