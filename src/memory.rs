@@ -123,7 +123,6 @@ impl BootInfoFrameAllocator {
         let regions = self.memory_map.iter();
 
         // on filtre les zones dangereuses/système pour ne garder que la section `Usable`
-        // (qui désigne les champs de RAM vides, prêts à l'utilisation libre par nos programmes)
         let usable_regions = regions.filter(|r| r.region_type == MemoryRegionType::Usable);
 
         // on récupère les limites  de ces zones libres (ex: de l'octet n° 8000 au 12000)
