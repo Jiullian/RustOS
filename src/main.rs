@@ -5,24 +5,39 @@
 #![test_runner(RustOS::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
-use core::panic::PanicInfo;
 use RustOS::println;
-
+use bootloader::{BootInfo, entry_point};
+use core::panic::PanicInfo;
+use x86_64::structures::paging::PageTable;
 // Création d'une variable static
 // b"Hello World!" => b pour créer une chaîne de caractères d'octets. VGA ne comprend que l'ASCII ET non l'UNICODE
 static HELLO: &[u8] = b"Hello World!";
 
-// Fonction point d'entrée du système.
-#[unsafe(no_mangle)]
-pub extern "C" fn _start() -> ! {
-    println!("Hello World{}", "!");
+entry_point!(kernel_main);
 
+// Fonction point d'entrée du système.
+fn kernel_main(boot_info: &'static BootInfo) -> ! {
+    use RustOS::memory;
+    use x86_64::{
+        VirtAddr,
+        structures::paging::{Page, Translate},
+    };
+
+    println!("Hello World{}", "!");
     RustOS::init();
 
-    use x86_64::registers::control::Cr3;
+    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
+    let mut mapper = unsafe { memory::init(phys_mem_offset) };
+    let mut frame_allocator =
+        unsafe { memory::BootInfoFrameAllocator::init(&boot_info.memory_map) };
 
-    let (level_4_page_table, _) = Cr3::read();
-    println!("Level 4 page table at: {:?}", level_4_page_table.start_address());
+    // pointage factice d'une page virtuelle libre (très très éloignée)
+    let page = Page::containing_address(VirtAddr::new(0xdeadbeaf000));
+    memory::create_example_mapping(page, &mut mapper, &mut frame_allocator);
+
+    //  on écrit `New!` (en little endian) et on l'affiche
+    let page_ptr: *mut u64 = page.start_address().as_mut_ptr();
+    unsafe { page_ptr.offset(400).write_volatile(0x_f021_f077_f065_f04e) };
 
     #[cfg(test)]
     test_main();

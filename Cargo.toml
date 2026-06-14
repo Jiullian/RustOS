@@ -4,13 +4,13 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bootloader = "0.9.8"
 volatile = "0.2.6"
 spin = "0.5.2"
 x86_64 = "0.14.2"
 uart_16550 = "0.2.0" #<-- interface UART pour communiquer avec le port série, pour envoyer les données de notre kernel à notre host
 pic8259 = "0.10.1"
 pc-keyboard = "0.7.0"
+bootloader = { version = "0.9.8", features = ["map_physical_memory"] } #<-- permet au kernel d'accéder à toute la RAM physique via un offset (obliger pour pouvoir éditer nos propres tables de pages)
 
 [dependencies.lazy_static]
 version = "1.0"
