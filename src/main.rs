@@ -9,6 +9,10 @@ use RustOS::println;
 use bootloader::{BootInfo, entry_point};
 use core::panic::PanicInfo;
 use x86_64::structures::paging::PageTable;
+extern crate alloc;
+
+use alloc::boxed::Box;
+
 // Création d'une variable static
 // b"Hello World!" => b pour créer une chaîne de caractères d'octets. VGA ne comprend que l'ASCII ET non l'UNICODE
 static HELLO: &[u8] = b"Hello World!";
@@ -17,7 +21,8 @@ entry_point!(kernel_main);
 
 // Fonction point d'entrée du système.
 fn kernel_main(boot_info: &'static BootInfo) -> ! {
-    use RustOS::memory;
+    use RustOS::allocator;
+    use RustOS::memory::{self,BootInfoFrameAllocator};
     use x86_64::{
         VirtAddr,
         structures::paging::{Page, Translate},
@@ -30,6 +35,9 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
     let mut frame_allocator =
         unsafe { memory::BootInfoFrameAllocator::init(&boot_info.memory_map) };
+
+    allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
+    let x = Box::new(41);
 
     // pointage factice d'une page virtuelle libre (très très éloignée)
     let page = Page::containing_address(VirtAddr::new(0xdeadbeaf000));

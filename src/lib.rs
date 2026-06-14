@@ -11,6 +11,8 @@ pub mod interrupts;
 pub mod memory;
 pub mod serial;
 pub mod vga_buffer;
+extern crate alloc;
+pub mod allocator;
 
 #[cfg(test)]
 use bootloader::{BootInfo, entry_point};
