@@ -11,6 +11,7 @@ uart_16550 = "0.2.0" #<-- interface UART pour communiquer avec le port série, p
 pic8259 = "0.10.1"
 pc-keyboard = "0.7.0"
 bootloader = { version = "0.9.8", features = ["map_physical_memory"] } #<-- permet au kernel d'accéder à toute la RAM physique via un offset (obliger pour pouvoir éditer nos propres tables de pages)
+linked_list_allocator = "0.10.6"
 
 [dependencies.lazy_static]
 version = "1.0"

@@ -9,6 +9,13 @@ use RustOS::println;
 use bootloader::{BootInfo, entry_point};
 use core::panic::PanicInfo;
 use x86_64::structures::paging::PageTable;
+extern crate alloc;
+
+use alloc::boxed::Box;
+use alloc::vec::Vec;
+use alloc::vec;
+use alloc::rc::Rc;
+
 // Création d'une variable static
 // b"Hello World!" => b pour créer une chaîne de caractères d'octets. VGA ne comprend que l'ASCII ET non l'UNICODE
 static HELLO: &[u8] = b"Hello World!";
@@ -17,7 +24,8 @@ entry_point!(kernel_main);
 
 // Fonction point d'entrée du système.
 fn kernel_main(boot_info: &'static BootInfo) -> ! {
-    use RustOS::memory;
+    use RustOS::allocator;
+    use RustOS::memory::{self,BootInfoFrameAllocator};
     use x86_64::{
         VirtAddr,
         structures::paging::{Page, Translate},
@@ -30,6 +38,25 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
     let mut frame_allocator =
         unsafe { memory::BootInfoFrameAllocator::init(&boot_info.memory_map) };
+
+    allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
+
+    // allouer un nombre dans la heap
+    let heap_value = Box::new(41);
+    println!("heap_value at {:p}", heap_value);
+
+    // créer un vecteur à taille dynamique
+    let mut vec = Vec::new();
+    for i in 0..500 {
+        vec.push(i);
+    }
+    println!("vec at {:p}", vec.as_slice());
+
+    let reference_counted = Rc::new(vec![1, 2, 3]);
+    let cloned_reference = reference_counted.clone();
+    println!("current reference count is {}", Rc::strong_count(&cloned_reference));
+    core::mem::drop(reference_counted);
+    println!("reference count is {} now", Rc::strong_count(&cloned_reference));
 
     // pointage factice d'une page virtuelle libre (très très éloignée)
     let page = Page::containing_address(VirtAddr::new(0xdeadbeaf000));
