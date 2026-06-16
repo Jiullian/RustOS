@@ -12,6 +12,9 @@ use x86_64::structures::paging::PageTable;
 extern crate alloc;
 
 use alloc::boxed::Box;
+use alloc::vec::Vec;
+use alloc::vec;
+use alloc::rc::Rc;
 
 // Création d'une variable static
 // b"Hello World!" => b pour créer une chaîne de caractères d'octets. VGA ne comprend que l'ASCII ET non l'UNICODE
@@ -37,7 +40,23 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
         unsafe { memory::BootInfoFrameAllocator::init(&boot_info.memory_map) };
 
     allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
-    let x = Box::new(41);
+
+    // allouer un nombre dans la heap
+    let heap_value = Box::new(41);
+    println!("heap_value at {:p}", heap_value);
+
+    // créer un vecteur à taille dynamique
+    let mut vec = Vec::new();
+    for i in 0..500 {
+        vec.push(i);
+    }
+    println!("vec at {:p}", vec.as_slice());
+
+    let reference_counted = Rc::new(vec![1, 2, 3]);
+    let cloned_reference = reference_counted.clone();
+    println!("current reference count is {}", Rc::strong_count(&cloned_reference));
+    core::mem::drop(reference_counted);
+    println!("reference count is {} now", Rc::strong_count(&cloned_reference));
 
     // pointage factice d'une page virtuelle libre (très très éloignée)
     let page = Page::containing_address(VirtAddr::new(0xdeadbeaf000));
