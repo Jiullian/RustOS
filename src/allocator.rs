@@ -1,6 +1,7 @@
 use linked_list_allocator::LockedHeap;
+use bump::BumpAllocator;
 #[global_allocator]
-static ALLOCATOR: LockedHeap = LockedHeap::empty();
+static ALLOCATOR: Locked<BumpAllocator> = Locked::new(BumpAllocator::new());
 
 use alloc::alloc::{GlobalAlloc, Layout};
 use core::ptr::null_mut;
@@ -11,8 +12,33 @@ use x86_64::{
     VirtAddr,
 };
 pub struct Dummy;
+pub struct Locked<A> {
+    inner: spin::Mutex<A>,
+}
+
+impl<A> Locked<A> {
+    pub const fn new(inner: A) -> Self {
+        Locked {
+            inner: spin::Mutex::new(inner),
+        }
+    }
+
+    pub fn lock(&self) -> spin::MutexGuard<A> {
+        self.inner.lock()
+    }
+}
 pub const HEAP_START: usize = 0x_4444_4444_0000;
 pub const HEAP_SIZE: usize = 100 * 1024;
+pub mod bump;
+
+fn align_up(addr: usize, align: usize) -> usize {
+    let remainder = addr % align;
+    if remainder == 0 {
+        addr
+    } else {
+        addr - remainder + align
+    }
+}
 
 // init_heap prend 2 paramètres :
 // - mapper : l'outil qui modifie les tables de pages (pour relier virtuel -> physique).
@@ -60,7 +86,7 @@ pub fn init_heap(
     unsafe {
         // ALLOCATOR.lock() : Empêche que deux parties du noyau n'essaient de modifier l'allocateur en même temps.
         // init() : initialisation de la région mémoire.
-        ALLOCATOR.lock().init(HEAP_START as *mut u8, HEAP_SIZE);
+        ALLOCATOR.lock().init(HEAP_START, HEAP_SIZE);
     }
 
     Ok(())
