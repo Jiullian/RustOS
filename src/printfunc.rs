@@ -56,56 +56,56 @@ fn help() {
 ///
 /// vérification de l'entré utilisateur er execution de la commande qui correspond
 pub fn verif_message(input: &str) {
+    let input = input.trim();
+
+    // Si l'entrée est vide (appui simple sur Entrée), on réaffiche juste le prompt
+    if input.is_empty() {
+        print!("> ");
+        return;
+    }
+
+    let mut command_found = true;
+
     // ===== Commandes simples (sans arguments) =====
 
-    // Commande : help — affiche la liste des commandes
+    // ===== Commandes simples =====
+
     if input == "help" {
         help();
-        print!("\n> ");
     }
-
     // Commande : info — affiche les informations de l'image disque
-    if input == "info" {
+    else if input == "info" {
         read_disk_info();
-        print!("\n> ");
     }
-
-    // ===== Commandes FAT=====
+    // ===== Commandes FAT (sans arguments) =====
 
     // Commande : ls — liste les fichiers (sans argument)
-    if input == "ls" {
+    else if input == "ls" {
         // TODO: décommenter quand le module fat sera fait
         // ls();
         println!("[fat] commande 'ls' pas encore implementee");
-        print!("\n> ");
     }
-
     // Commandes sans argument : affichent un message d'erreur d'utilisation de la commande
-    if input == "touch" {
+    else if input == "touch" {
         println!("Erreur: usage -> touch <nom_fichier> <contenu>");
-        print!("\n> ");
     }
-    if input == "cat" {
+    else if input == "cat" {
         println!("Erreur: usage -> cat <nom_fichier>");
-        print!("\n> ");
     }
-    if input == "mkdir" {
+    else if input == "mkdir" {
         println!("Erreur: usage -> mkdir <nom_dossier>");
-        print!("\n> ");
     }
-    if input == "rm" {
+    else if input == "rm" {
         println!("Erreur: usage -> rm <nom_fichier>");
-        print!("\n> ");
     }
-    if input == "rmdir" {
+    else if input == "rmdir" {
         println!("Erreur: usage -> rmdir <nom_dossier>");
-        print!("\n> ");
     }
 
     // ===== Commandes FAT avec arguments =====
 
     // Commande : touch <nom> <contenu> — crée un fichier avec du contenu
-    if input.starts_with("touch ") {
+    else if input.starts_with("touch ") {
         // On retire le préfixe "touch " pour récupérer les arguments
         let input_trimmed = &input[6..];
 
