@@ -33,9 +33,10 @@ pub fn title() {
 
     // Indication pour l'utilisateur
     println!("'help' -> Pour voir toutes les commandes\n");
+    print!("> ");
 }
 
-/// Affiche la liste de toutes les commandes disponibles dans le shell.
+/// Liste des commandes du shell.
 fn help() {
     println!("\nListe des commandes :");
     println!("help   -> Affiche ce message");
