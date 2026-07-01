@@ -69,6 +69,18 @@ impl Writer {
     pub fn write_byte(&mut self, byte: u8) {
         match byte {
             b'\n' => self.new_line(), // Gestion du saut de ligne
+            b'\x08' => { // Gestion du retour arrière (backspace)
+                if self.column_position > 0 {
+                    self.column_position -= 1;
+                    let row = BUFFER_HEIGHT - 1;
+                    let col = self.column_position;
+                    let color_code = self.color_code;
+                    self.buffer.chars[row][col].write(ScreenChar {
+                        ascii_character: b' ',
+                        color_code,
+                    });
+                }
+            }
             byte => {
                 // Si on dépasse la largeur, on passe à la ligne suivante
                 if self.column_position >= BUFFER_WIDTH {
@@ -93,8 +105,8 @@ impl Writer {
     pub fn write_string(&mut self, s: &str) {
         for byte in s.bytes() {
             match byte {
-                // Caractère ASCII imprimable ou saut de ligne
-                0x20..=0x7e | b'\n' => self.write_byte(byte),
+                // Caractère ASCII imprimable, saut de ligne ou retour arrière
+                0x20..=0x7e | b'\n' | b'\x08' => self.write_byte(byte),
                 // Caractère non imprimable : on affiche un carré (0xfe)
                 _ => self.write_byte(0xfe),
             }
