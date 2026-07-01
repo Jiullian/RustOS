@@ -1,7 +1,8 @@
 //! Gestion de l'image disque FAT32
 //!
-//! Ce module permet d'interagir avec une image disque FAT32 en mémoire. Il propose
-//! des fonctions pour initialiser l'image, lire des informations et manipuler la FAT.
+//! Permet d'interagir avec une image disque FAT32 en mémoire,
+//! fonctions pour initialiser l'image, lire des informations et manipuler la FAT.
+#![allow(static_mut_refs)]
 use crate::println;
 
 /// Taille de l'image disque, déterminée à partir du fichier `imgfat32.img`.
@@ -72,8 +73,7 @@ pub fn find_free_cluster(fat_offset: usize) -> Option<u32> {
 /// Calcule l'offset d'un cluster spécifique dans la zone de données.
 pub fn calculate_cluster_offset(data_offset: usize, cluster: u32) -> usize {
     unsafe {
-        let bytes_per_sector =
-            u16::from_le_bytes([DISK_IMAGE[11], DISK_IMAGE[12]]) as usize;
+        let bytes_per_sector = u16::from_le_bytes([DISK_IMAGE[11], DISK_IMAGE[12]]) as usize;
         let sectors_per_cluster = DISK_IMAGE[13] as usize;
         let cluster_size = bytes_per_sector * sectors_per_cluster;
 
