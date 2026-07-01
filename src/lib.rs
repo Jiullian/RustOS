@@ -13,6 +13,8 @@ pub mod serial;
 pub mod vga_buffer;
 extern crate alloc;
 pub mod allocator;
+pub mod disk;
+pub mod printfunc;
 
 #[cfg(test)]
 use bootloader::{BootInfo, entry_point};
@@ -88,12 +90,18 @@ pub fn exit_qemu(exit_code: QemuExitCode) {
 
 //fonction d'initalisation de la GDT (pile de secours) et de l'IDT (handler d'exceptions) (dépend de la GDT).
 pub fn init() {
+    // Chargement de l'image disque en mémoire
+    disk::initialize_disk_image();
+
+    // Initialisation du matériel
     gdt::init();
     interrupts::init_idt();
     unsafe { interrupts::PICS.lock().initialize() };
     x86_64::instructions::interrupts::enable();
-}
 
+    // Affichage du titre au démarrage
+    printfunc::title();
+}
 
 pub fn hlt_loop() -> ! {
     loop {
