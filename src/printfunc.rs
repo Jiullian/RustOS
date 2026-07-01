@@ -1,20 +1,17 @@
-//! Module d'interface utilisateur du shell.
+//! Module d'interface utilisateur du shell avec les commandes possible
 //!
-//! Ce module gère l'affichage du titre au démarrage, la liste des commandes
+//! gère l'affichage du titre au démarrage, la liste des commandes
 //! disponibles, et le routage de l'entrée utilisateur vers la bonne commande.
-//! Les commandes FAT (ls, touch, cat, mkdir, rm, rmdir) nécessitent le module
-//! `fat` qui sera implémenté séparément.
 
 use crate::disk::read_disk_info;
 use crate::{print, println};
 use x86_64::instructions::hlt;
 
-// Note : les imports suivants seront activés quand le module `fat` sera implémenté.
+// TODO : prochainement implémenté
 // use crate::fat::{ls, touch, cat, mkdir, rm, rmdir};
 
-/// Affiche le titre ASCII "ROS" et le message d'accueil au démarrage du système.
+/// Affiche le titre ASCII et le message d'accueil au boot du système.
 pub fn title() {
-    // Art ASCII représentant "ROS"
     println!(r"  _____    ____    _____ ");
     println!(r" |  __ \  / __ \  / ____|");
     println!(r" | |__) || |  | || (___  ");
@@ -56,8 +53,7 @@ fn help() {
 /// # Arguments
 /// * `input` - La chaîne saisie par l'utilisateur dans le shell.
 ///
-/// Les commandes FAT (ls, touch, cat, mkdir, rm, rmdir) sont préparées
-/// mais nécessitent l'implémentation du module `fat` pour fonctionner.
+/// vérification de l'entré utilisateur er execution de la commande qui correspond
 pub fn verif_message(input: &str) {
     // ===== Commandes simples (sans arguments) =====
 
@@ -77,13 +73,13 @@ pub fn verif_message(input: &str) {
 
     // Commande : ls — liste les fichiers (sans argument)
     if input == "ls" {
-        // TODO: décommenter quand le module fat sera prêt
+        // TODO: décommenter quand le module fat sera fait
         // ls();
         println!("[fat] commande 'ls' pas encore implementee");
         print!("\n> ");
     }
 
-    // Commandes sans argument : affichent un message d'erreur d'usage
+    // Commandes sans argument : affichent un message d'erreur d'utilisation de la commande
     if input == "touch" {
         println!("Erreur: usage -> touch <nom_fichier> <contenu>");
         print!("\n> ");
@@ -117,7 +113,7 @@ pub fn verif_message(input: &str) {
             let _file_name = &input_trimmed[..space_index];
             let _file_content = &input_trimmed[space_index + 1..];
 
-            // TODO: décommenter quand le module fat sera prêt
+            // TODO: décommenter quand le module fat sera fait
             // unsafe {
             //     touch(file_name, file_content.as_bytes());
             //     print!("\n> ");
@@ -138,7 +134,7 @@ pub fn verif_message(input: &str) {
 
         if !input_trimmed.is_empty() {
             let _file_name = input_trimmed.trim();
-            // TODO: décommenter quand le module fat sera prêt
+            // TODO: décommenter quand le module fat sera fait
             // unsafe {
             //     cat(file_name);
             //     print!("\n> ");
@@ -155,7 +151,7 @@ pub fn verif_message(input: &str) {
     if input.starts_with("mkdir ") {
         let dir_name = input[6..].trim();
         if !dir_name.is_empty() {
-            // TODO: décommenter quand le module fat sera prêt
+            // TODO: décommenter quand le module fat sera fait
             // unsafe {
             //     mkdir(dir_name);
             //     print!("\n> ");
@@ -172,7 +168,7 @@ pub fn verif_message(input: &str) {
     if input.starts_with("rm ") {
         let name = input[3..].trim();
         if !name.is_empty() {
-            // TODO: décommenter quand le module fat sera prêt
+            // TODO: décommenter quand le module fat sera fait
             // unsafe {
             //     rm(name);
             //     print!("\n> ");
@@ -189,7 +185,7 @@ pub fn verif_message(input: &str) {
     if input.starts_with("rmdir ") {
         let name = input[6..].trim();
         if !name.is_empty() {
-            // TODO: décommenter quand le module fat sera prêt
+            // TODO: décommenter quand le module fat sera fait
             // unsafe {
             //     rmdir(name);
             //     print!("\n> ");
