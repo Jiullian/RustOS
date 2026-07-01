@@ -27,7 +27,7 @@ extern "x86-interrupt" fn page_fault_handler(stack_frame: InterruptStackFrame, e
 extern "x86-interrupt" fn timer_interrupt_handler(
     _stack_frame: InterruptStackFrame)
 {
-    print!(".");
+    // print!("."); // Désactivé pour éviter de polluer le terminal
     unsafe {
         PICS.lock().notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
     }
@@ -46,12 +46,20 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
     use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
     use spin::Mutex;
     use x86_64::instructions::port::Port;
+    use crate::printfunc::verif_message;
 
     lazy_static! {
+        // Clavier US104 par défaut dans RustOS (ou Azerty si tu veux, j'ai gardé le type Us104Key ici)
         static ref KEYBOARD: Mutex<Keyboard<layouts::Us104Key, ScancodeSet1>> =
             Mutex::new(Keyboard::new(ScancodeSet1::new(),
-        layouts::Us104Key, HandleControl::Ignore)
-        );
+                layouts::Us104Key, HandleControl::Ignore)
+            );
+    }
+
+    // Définition du tampon qui stockera les entrées utilisateur
+    lazy_static! {
+        static ref INPUT_TEXT: Mutex<[u8; 256]> = Mutex::new([0u8; 256]);
+        static ref INPUT_LEN: Mutex<usize> = Mutex::new(0);
     }
 
     let mut keyboard = KEYBOARD.lock();
@@ -61,8 +69,47 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
     if let Ok(Some(key_event)) = keyboard.add_byte(scancode) {
         if let Some(key) = keyboard.process_keyevent(key_event) {
             match key {
-                DecodedKey::Unicode(character) => print!("{}", character),
-                DecodedKey::RawKey(key) => print!("{:?}", key),
+                // Touches de caractères normales
+                DecodedKey::Unicode(character) => {
+                    // Gestion du retour arrière (Backspace)
+                    if character == '\x08' {
+                        let mut input_len = INPUT_LEN.lock();
+                        if *input_len > 0 {
+                            *input_len -= 1;
+                            // On efface le caractère à l'écran
+                            print!("{}", character);
+                        }
+                    }
+                    // Si ce n'est pas Entrée ni Retour arrière, on stocke le caractère dans notre tampon
+                    else if character != '\n' {
+                        let mut input_text = INPUT_TEXT.lock();
+                        let mut input_len = INPUT_LEN.lock();
+                        
+                        if *input_len < input_text.len() {
+                            input_text[*input_len] = character as u8;
+                            *input_len += 1;
+                            // Affichage du caractère à l'écran
+                            print!("{}", character);
+                        }
+                    }
+                    
+                    // Si c'est Entrée, on valide le message saisi
+                    if character == '\n' {
+                        // Affichage du retour à la ligne
+                        print!("{}", character);
+                        
+                        let input_text = INPUT_TEXT.lock();
+                        let input_str = core::str::from_utf8(&input_text[..*INPUT_LEN.lock()]).unwrap_or("");
+                        
+                        // Envoi au processeur de commande du Shell
+                        verif_message(input_str);
+                        
+                        // Réinitialisation de la longueur du tampon pour la prochaine commande
+                        *INPUT_LEN.lock() = 0;
+                    }
+                },
+                // Touches spéciales/brutes (Shift, Ctrl, flèches, etc.) -> on ne fait rien
+                DecodedKey::RawKey(_key) => {}
             }
         }
     }

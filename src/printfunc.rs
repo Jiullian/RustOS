@@ -117,19 +117,15 @@ pub fn verif_message(input: &str) {
             // TODO: décommenter quand le module fat sera fait
             // unsafe {
             //     touch(file_name, file_content.as_bytes());
-            //     print!("\n> ");
             // }
             println!("[fat] commande 'touch' pas encore implementee");
-            print!("\n> ");
         } else {
             // Pas assez d'arguments fournis
             println!("Erreur: usage -> touch <nom_fichier> <contenu>");
-            print!("\n> ");
         }
     }
-
     // Commande : cat <nom> — lit le contenu d'un fichier
-    if input.starts_with("cat ") {
+    else if input.starts_with("cat ") {
         // On retire le préfixe "cat " pour récupérer le nom du fichier
         let input_trimmed = &input[4..];
 
@@ -138,64 +134,56 @@ pub fn verif_message(input: &str) {
             // TODO: décommenter quand le module fat sera fait
             // unsafe {
             //     cat(file_name);
-            //     print!("\n> ");
             // }
             println!("[fat] commande 'cat' pas encore implementee");
-            print!("\n> ");
         } else {
             println!("Erreur: usage -> cat <nom_fichier>");
-            print!("\n> ");
         }
     }
-
     // Commande : mkdir <nom> — crée un dossier
-    if input.starts_with("mkdir ") {
+    else if input.starts_with("mkdir ") {
         let dir_name = input[6..].trim();
         if !dir_name.is_empty() {
             // TODO: décommenter quand le module fat sera fait
             // unsafe {
             //     mkdir(dir_name);
-            //     print!("\n> ");
             // }
             println!("[fat] commande 'mkdir' pas encore implementee");
-            print!("\n> ");
         } else {
             println!("Erreur: usage -> mkdir <nom_dossier>");
-            print!("\n> ");
         }
     }
-
     // Commande : rm <nom> — supprime un fichier
-    if input.starts_with("rm ") {
+    else if input.starts_with("rm ") {
         let name = input[3..].trim();
         if !name.is_empty() {
             // TODO: décommenter quand le module fat sera fait
             // unsafe {
             //     rm(name);
-            //     print!("\n> ");
             // }
             println!("[fat] commande 'rm' pas encore implementee");
-            print!("\n> ");
         } else {
             println!("Erreur: usage -> rm <nom_fichier>");
-            print!("\n> ");
         }
     }
-
     // Commande : rmdir <nom> — supprime un dossier
-    if input.starts_with("rmdir ") {
+    else if input.starts_with("rmdir ") {
         let name = input[6..].trim();
         if !name.is_empty() {
             // TODO: décommenter quand le module fat sera fait
             // unsafe {
             //     rmdir(name);
-            //     print!("\n> ");
             // }
             println!("[fat] commande 'rmdir' pas encore implementee");
-            print!("\n> ");
         } else {
             println!("Erreur: usage -> rmdir <nom_dossier>");
-            print!("\n> ");
         }
     }
+    // Si aucune commande n'a correspondu, on le signale
+    else {
+        println!("Commande inconnue : '{}'", input);
+    }
+
+    // Affichage systématique du prompt pour la commande suivante
+    print!("\n> ");
 }
