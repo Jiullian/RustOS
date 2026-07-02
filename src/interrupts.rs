@@ -82,41 +82,55 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
                     }
                     // Gestion de la tabulation (Autocomplétion)
                     else if character == '\t' {
-                        let mut input_text = INPUT_TEXT.lock();
-                        let mut input_len = INPUT_LEN.lock();
+                        // Option qui contiendra la longueur et le buffer complété après avoir relâché l'emprunt immuable
+                        let mut completion_data: Option<(usize, [u8; 12])> = None;
 
-                        // Conversion du tampon de saisie actuel en chaîne
-                        if let Ok(input_str) = core::str::from_utf8(&input_text[..*input_len]) {
-                            // On extrait le dernier mot saisi (le nom de fichier commencé)
-                            let prefixe = if let Some(space_idx) = input_str.rfind(' ') {
-                                &input_str[space_idx + 1..]
-                            } else {
-                                input_str
-                            };
+                        // Portée isolée pour l'analyse immuable (évite les conflits d'emprunt avec les écritures futures)
+                        {
+                            let input_text = INPUT_TEXT.lock();
+                            let input_len = INPUT_LEN.lock();
 
-                            if !prefixe.is_empty() {
-                                let mut completion_buf = [0u8; 12];
-                                 // Recherche d'une unique correspondance
-                                if let Some(longueur) = crate::fat::completer_nom(prefixe, &mut completion_buf) {
-                                    if let Ok(nom_complet) = core::str::from_utf8(&completion_buf[..longueur]) {
-                                        // 1. Effacer le préfixe du buffer RAM et de l'écran VGA
-                                        for _ in 0..prefixe.len() {
-                                            if *input_len > 0 {
-                                                *input_len -= 1;
-                                                print!("\x08"); // Envoie un retour arrière pour effacer à l'écran
-                                            }
-                                        }
+                            if let Ok(input_str) = core::str::from_utf8(&input_text[..*input_len]) {
+                                // On extrait le dernier mot saisi
+                                let prefixe = if let Some(space_idx) = input_str.rfind(' ') {
+                                    &input_str[space_idx + 1..]
+                                } else {
+                                    input_str
+                                };
 
-                                        // 2. Écrire le nom complet (avec la bonne casse du disque) en RAM et à l'écran
-                                        for &byte in nom_complet.as_bytes() {
-                                            if *input_len < input_text.len() {
-                                                input_text[*input_len] = byte;
-                                                *input_len += 1;
-                                                print!("{}", byte as char);
-                                            }
-                                        }
+                                if !prefixe.is_empty() {
+                                    let mut completion_buf = [0u8; 12];
+                                    // Recherche de correspondance uniquement dans le répertoire racine
+                                    if let Some(longueur) = crate::fat::completer_nom(prefixe, &mut completion_buf) {
+                                        completion_data = Some((prefixe.len(), completion_buf));
                                     }
                                 }
+                            }
+                        }
+
+                        // Si une correspondance unique a été trouvée, on procède à l'écriture (emprunt mutable)
+                        if let Some((prefix_len, completion_buf)) = completion_data {
+                            let mut input_text = INPUT_TEXT.lock();
+                            let mut input_len = INPUT_LEN.lock();
+
+                            // 1. Effacer le préfixe saisi
+                            for _ in 0..prefix_len {
+                                if *input_len > 0 {
+                                    *input_len -= 1;
+                                    print!("\x08"); // Retour arrière sur le terminal VGA
+                                }
+                            }
+
+                            // 2. Écrire le nom complet récupéré depuis le répertoire racine
+                            let mut completion_len = 0;
+                            while completion_len < 12 && completion_buf[completion_len] != 0 {
+                                let byte = completion_buf[completion_len];
+                                if *input_len < input_text.len() {
+                                    input_text[*input_len] = byte;
+                                    *input_len += 1;
+                                    print!("{}", byte as char);
+                                }
+                                completion_len += 1;
                             }
                         }
                     }
