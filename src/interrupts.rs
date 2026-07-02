@@ -1,20 +1,22 @@
-use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
-use crate::println;
-use crate::print;
-use lazy_static::lazy_static;
 use crate::gdt;
+use crate::hlt_loop;
+use crate::print;
+use crate::println;
+use lazy_static::lazy_static;
 use pic8259::ChainedPics;
 use spin;
 use x86_64::structures::idt::PageFaultErrorCode;
-use crate::hlt_loop;
+use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
 
 pub const PIC_1_OFFSET: u8 = 32;
 pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
 
-
 //gestionnaire exception page fault
 
-extern "x86-interrupt" fn page_fault_handler(stack_frame: InterruptStackFrame, error_code: PageFaultErrorCode,) {
+extern "x86-interrupt" fn page_fault_handler(
+    stack_frame: InterruptStackFrame,
+    error_code: PageFaultErrorCode,
+) {
     use x86_64::registers::control::Cr2;
 
     println!("EXCEPTION: PAGE FAULT");
@@ -24,35 +26,33 @@ extern "x86-interrupt" fn page_fault_handler(stack_frame: InterruptStackFrame, e
     hlt_loop();
 }
 
-extern "x86-interrupt" fn timer_interrupt_handler(
-    _stack_frame: InterruptStackFrame)
-{
+extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
     // print!("."); // Désactivé pour éviter de polluer le terminal
     unsafe {
-        PICS.lock().notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
+        PICS.lock()
+            .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
     }
 }
 
 //Support saisie clavier
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
-pub enum InterruptIndex{
+pub enum InterruptIndex {
     Timer = PIC_1_OFFSET,
     Keyboard,
 }
 
-extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStackFrame)
-{
-    use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
+extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStackFrame) {
+    use crate::printfunc::verif_message;
+    use pc_keyboard::{DecodedKey, HandleControl, Keyboard, ScancodeSet1, layouts};
     use spin::Mutex;
     use x86_64::instructions::port::Port;
-    use crate::printfunc::verif_message;
 
     lazy_static! {
-        // Clavier US104 par défaut dans RustOS (ou Azerty si tu veux, j'ai gardé le type Us104Key ici)
-        static ref KEYBOARD: Mutex<Keyboard<layouts::Us104Key, ScancodeSet1>> =
+        // Clavier AZERTY
+        static ref KEYBOARD: Mutex<Keyboard<layouts::Azerty, ScancodeSet1>> =
             Mutex::new(Keyboard::new(ScancodeSet1::new(),
-                layouts::Us104Key, HandleControl::Ignore)
+                layouts::Azerty, HandleControl::Ignore)
             );
     }
 
@@ -84,7 +84,7 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
                     else if character != '\n' {
                         let mut input_text = INPUT_TEXT.lock();
                         let mut input_len = INPUT_LEN.lock();
-                        
+
                         if *input_len < input_text.len() {
                             input_text[*input_len] = character as u8;
                             *input_len += 1;
@@ -92,22 +92,23 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
                             print!("{}", character);
                         }
                     }
-                    
+
                     // Si c'est Entrée, on valide le message saisi
                     if character == '\n' {
                         // Affichage du retour à la ligne
                         print!("{}", character);
-                        
+
                         let input_text = INPUT_TEXT.lock();
-                        let input_str = core::str::from_utf8(&input_text[..*INPUT_LEN.lock()]).unwrap_or("");
-                        
+                        let input_str =
+                            core::str::from_utf8(&input_text[..*INPUT_LEN.lock()]).unwrap_or("");
+
                         // Envoi au processeur de commande du Shell
                         verif_message(input_str);
-                        
+
                         // Réinitialisation de la longueur du tampon pour la prochaine commande
                         *INPUT_LEN.lock() = 0;
                     }
-                },
+                }
                 // Touches spéciales/brutes (Shift, Ctrl, flèches, etc.) -> on ne fait rien
                 DecodedKey::RawKey(_key) => {}
             }
@@ -115,7 +116,8 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
     }
 
     unsafe {
-        PICS.lock().notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
+        PICS.lock()
+            .notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
     }
 }
 
@@ -144,21 +146,21 @@ pub fn init_idt() {
 }
 
 //fonction pour gérer les breakpoints
-extern "x86-interrupt" fn breakpoint_handler(
-    stack_frame: InterruptStackFrame)
-{
+extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
     println!("!EXCEPTION: BREAKPOINT!\n{:#?}", stack_frame);
 }
 
-
 //appelé par le cpu quand une exception survient et que le handler échoue. C'est un handler de dernier recours.
 extern "x86-interrupt" fn double_fault_handler(
-    stack_frame: InterruptStackFrame, _error_code: u64) -> ! //retourne ! car aucune reprise n'est possible après un double fault
+    stack_frame: InterruptStackFrame,
+    _error_code: u64,
+) -> ! //retourne ! car aucune reprise n'est possible après un double fault
 {
     panic!("EXCEPTION DOUBLE_FAULT\n{:#?}", stack_frame);
 }
 
-pub static PICS: spin::Mutex<ChainedPics> = spin::Mutex::new(unsafe { ChainedPics::new(PIC_1_OFFSET, PIC_2_OFFSET) });
+pub static PICS: spin::Mutex<ChainedPics> =
+    spin::Mutex::new(unsafe { ChainedPics::new(PIC_1_OFFSET, PIC_2_OFFSET) });
 
 impl InterruptIndex {
     fn as_u8(self) -> u8 {
