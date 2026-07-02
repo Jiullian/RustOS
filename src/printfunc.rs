@@ -8,7 +8,7 @@ use crate::{print, println};
 use x86_64::instructions::hlt;
 
 // Import des commandes FAT disponibles
-use crate::fat::{ls, cat};
+use crate::fat::{ls, cat, touch, mkdir};
 
 /// Affiche le titre ASCII et le message d'accueil au boot du système.
 pub fn title() {
@@ -78,7 +78,7 @@ pub fn verif_message(input: &str) {
         read_disk_info();
     }
     // ===== Commandes FAT (sans arguments) =====
-
+    
     // Commande : ls — liste les fichiers du répertoire racine
     else if input == "ls" {
         ls();
@@ -109,14 +109,12 @@ pub fn verif_message(input: &str) {
 
         // On cherche le premier espace pour séparer le nom du fichier et son contenu
         if let Some(space_index) = input_trimmed.find(' ') {
-            let _file_name = &input_trimmed[..space_index];
-            let _file_content = &input_trimmed[space_index + 1..];
+            let file_name = &input_trimmed[..space_index];
+            let file_content = &input_trimmed[space_index + 1..];
 
-            // TODO: décommenter quand le module fat sera fait
-            // unsafe {
-            //     touch(file_name, file_content.as_bytes());
-            // }
-            println!("[fat] commande 'touch' pas encore implementee");
+            unsafe {
+                touch(file_name, file_content.as_bytes());
+            }
         } else {
             // Pas assez d'arguments fournis
             println!("Erreur: usage -> touch <nom_fichier> <contenu>");
@@ -138,11 +136,9 @@ pub fn verif_message(input: &str) {
     else if input.starts_with("mkdir ") {
         let dir_name = input[6..].trim();
         if !dir_name.is_empty() {
-            // TODO: décommenter quand le module fat sera fait
-            // unsafe {
-            //     mkdir(dir_name);
-            // }
-            println!("[fat] commande 'mkdir' pas encore implementee");
+            unsafe {
+                mkdir(dir_name);
+            }
         } else {
             println!("Erreur: usage -> mkdir <nom_dossier>");
         }
