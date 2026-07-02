@@ -235,55 +235,79 @@ pub fn cat(file_name: &str) {
 /// La recherche est insensible à la casse pour faciliter la saisie (ex: "rea" complète vers "README.TXT").
 pub fn completer_nom(prefixe: &str, nom_complet_out: &mut [u8]) -> Option<usize> {
     unsafe {
+        // On récupère l'offset de départ du répertoire racine dans le disque
         let root_offset = calculate_offsets().1;
+
+        // Calcul de la taille du cluster (bps = octets par secteur * secteurs par cluster)
         let bps = u16::from_le_bytes([DISK_IMAGE[11], DISK_IMAGE[12]]) as usize;
         let cluster_size = bps * DISK_IMAGE[13] as usize;
+
+        // Récupération de la tranche mémoire contenant le répertoire racine
         let root = &DISK_IMAGE[root_offset..root_offset + cluster_size];
 
+        // Tampon pour recevoir temporairement le nom extrait de chaque entrée
         let mut buf = [0u8; 12];
+
+        // Variable pour stocker le nom trouvé si un fichier correspond
         let mut correspondance: Option<[u8; 12]> = None;
+
+        // Compteur du nombre total de fichiers qui correspondent au préfixe
         let mut nb_trouves = 0;
 
+        // Parcours de toutes les entrées de répertoire du répertoire racine (blocs de 32 octets)
         for i in (0..cluster_size).step_by(32) {
+            // Interprétation des 32 octets comme une DirectoryEntry
             let entry: &DirectoryEntry = &*(root[i..].as_ptr() as *const DirectoryEntry);
 
+            // On s'intéresse uniquement aux entrées valides et qui désignent des fichiers (pas des dossiers)
             if entry.is_valid() && !entry.is_directory() {
+                // Extraction et formatage du nom (ex: "README.TXT")
                 let name = entry.get_name(&mut buf);
 
-                // Vérification insensible à la casse
+                // Algorithme de vérification insensible à la casse
                 let mut match_prefix = true;
+
+                // Si le préfixe saisi est plus long que le nom du fichier, ce n'est pas une correspondance
                 if prefixe.len() > name.len() {
                     match_prefix = false;
                 } else {
+                    // On compare lettre par lettre en convertissant tout en majuscules (to_ascii_uppercase)
                     for (c1, c2) in prefixe.bytes().zip(name.bytes()) {
                         if c1.to_ascii_uppercase() != c2.to_ascii_uppercase() {
                             match_prefix = false;
-                            break;
+                            break; // Dès qu'une lettre diffère, on s'arrête
                         }
                     }
                 }
 
-                // Si ça correspond et que ce n'est pas le nom exact déjà tapé en entier
+                // Si le préfixe correspond et que le fichier a un nom plus long que la saisie actuelle
+                // (évite de compléter si l'utilisateur a déjà tapé le nom exact)
                 if match_prefix && name.len() > prefixe.len() {
-                    correspondance = Some(buf);
-                    nb_trouves += 1;
+                    correspondance = Some(buf); // On sauvegarde le nom trouvé
+                    nb_trouves += 1; // On incrémente le compteur de correspondances
                 }
             }
         }
 
-        // Si on a trouvé exactement un seul fichier correspondant
+        // Si et seulement si on a trouvé EXACTEMENT une seule correspondance unique sur le disque
         if nb_trouves == 1 {
             let res = correspondance.unwrap();
             let mut len = 0;
-            // On calcule la longueur réelle du nom
+
+            // Calcul de la longueur du nom de fichier (jusqu'à l'octet nul de fin \0)
             while len < 12 && res[len] != 0 {
                 len += 1;
             }
+
+            // Si la taille du nom tient dans le buffer de sortie
             if len <= nom_complet_out.len() {
+                // On copie le nom trouvé dans le tampon de sortie
                 nom_complet_out[..len].copy_from_slice(&res[..len]);
-                return Some(len);
+                return Some(len); // On renvoie la longueur du nom complété
             }
         }
+
+        // Si 0 fichier ou plusieurs fichiers correspondent, on ne fait aucune complétion
         None
     }
 }
