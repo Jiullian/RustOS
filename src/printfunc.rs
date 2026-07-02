@@ -7,8 +7,8 @@ use crate::disk::read_disk_info;
 use crate::{print, println};
 use x86_64::instructions::hlt;
 
-// Import des commandes FAT disponibles (les autres seront décommentées plus tard)
-use crate::fat::ls;
+// Import des commandes FAT disponibles
+use crate::fat::{ls, cat};
 
 /// Affiche le titre ASCII et le message d'accueil au boot du système.
 pub fn title() {
@@ -128,12 +128,8 @@ pub fn verif_message(input: &str) {
         let input_trimmed = &input[4..];
 
         if !input_trimmed.is_empty() {
-            let _file_name = input_trimmed.trim();
-            // TODO: décommenter quand le module fat sera fait
-            // unsafe {
-            //     cat(file_name);
-            // }
-            println!("[fat] commande 'cat' pas encore implementee");
+            let file_name = input_trimmed.trim();
+            cat(file_name);
         } else {
             println!("Erreur: usage -> cat <nom_fichier>");
         }
