@@ -1,7 +1,7 @@
-use volatile::Volatile;
 use core::fmt;
 use lazy_static::lazy_static;
 use spin::Mutex;
+use volatile::Volatile;
 
 // Couleur standard du mode texte VGA
 #[allow(dead_code)]
@@ -69,7 +69,8 @@ impl Writer {
     pub fn write_byte(&mut self, byte: u8) {
         match byte {
             b'\n' => self.new_line(), // Gestion du saut de ligne
-            b'\x08' => { // Gestion du retour arrière (backspace)
+            b'\x08' => {
+                // Gestion du retour arrière (backspace)
                 if self.column_position > 0 {
                     self.column_position -= 1;
                     let row = BUFFER_HEIGHT - 1;
@@ -152,7 +153,7 @@ impl fmt::Write for Writer {
 lazy_static! {
     pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
         column_position: 0,
-        color_code: ColorCode::new(Color::Yellow, Color::Black),
+        color_code: ColorCode::new(Color::White, Color::Black),
         // unsafe : On force la serrure. On dit à Rust "T'inquiète, je sais que 0xb8000 est l'adresse magique de l'écran".
         buffer: unsafe { &mut *(0xb8000 as *mut Buffer) },
     });
@@ -181,6 +182,20 @@ pub fn _print(args: fmt::Arguments) {
     interrupts::without_interrupts(|| {
         WRITER.lock().write_fmt(args).unwrap();
     });
+}
+
+/// Change la couleur du texte pour les prochains caractères affichés.
+/// Utile pour afficher les dossiers en bleu dans le ls
+pub fn set_color(foreground: Color, background: Color) {
+    use x86_64::instructions::interrupts;
+    interrupts::without_interrupts(|| {
+        WRITER.lock().color_code = ColorCode::new(foreground, background);
+    });
+}
+
+/// Remet la couleur par défaut (blanc sur noir).
+pub fn reset_color() {
+    set_color(Color::White, Color::Black);
 }
 
 //implémentation de test pour vérifier si println fonctionne sans faire de Panic.
