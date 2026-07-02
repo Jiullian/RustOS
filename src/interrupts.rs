@@ -80,7 +80,47 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
                             print!("{}", character);
                         }
                     }
-                    // Si ce n'est pas Entrée ni Retour arrière, on stocke le caractère dans notre tampon
+                    // Gestion de la tabulation (Autocomplétion)
+                    else if character == '\t' {
+                        let mut input_text = INPUT_TEXT.lock();
+                        let mut input_len = INPUT_LEN.lock();
+
+                        // Conversion du tampon de saisie actuel en chaîne
+                        if let Ok(input_str) = core::str::from_utf8(&input_text[..*input_len]) {
+                            // On extrait le dernier mot saisi (le nom de fichier commencé)
+                            let prefixe = if let Some(space_idx) = input_str.rfind(' ') {
+                                &input_str[space_idx + 1..]
+                            } else {
+                                input_str
+                            };
+
+                            if !prefixe.is_empty() {
+                                let mut completion_buf = [0u8; 12];
+                                 // Recherche d'une unique correspondance
+                                if let Some(longueur) = crate::fat::completer_nom(prefixe, &mut completion_buf) {
+                                    if let Ok(nom_complet) = core::str::from_utf8(&completion_buf[..longueur]) {
+                                        // 1. Effacer le préfixe du buffer RAM et de l'écran VGA
+                                        for _ in 0..prefixe.len() {
+                                            if *input_len > 0 {
+                                                *input_len -= 1;
+                                                print!("\x08"); // Envoie un retour arrière pour effacer à l'écran
+                                            }
+                                        }
+
+                                        // 2. Écrire le nom complet (avec la bonne casse du disque) en RAM et à l'écran
+                                        for &byte in nom_complet.as_bytes() {
+                                            if *input_len < input_text.len() {
+                                                input_text[*input_len] = byte;
+                                                *input_len += 1;
+                                                print!("{}", byte as char);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    // Si ce n'est pas Entrée, Retour arrière ni Tabulation, on stocke le caractère normal
                     else if character != '\n' {
                         let mut input_text = INPUT_TEXT.lock();
                         let mut input_len = INPUT_LEN.lock();
