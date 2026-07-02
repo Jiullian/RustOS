@@ -14,6 +14,7 @@ pub mod vga_buffer;
 extern crate alloc;
 pub mod allocator;
 pub mod disk;
+pub mod fat;
 pub mod printfunc;
 
 #[cfg(test)]

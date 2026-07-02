@@ -7,8 +7,8 @@ use crate::disk::read_disk_info;
 use crate::{print, println};
 use x86_64::instructions::hlt;
 
-// TODO : prochainement implémenté
-// use crate::fat::{ls, touch, cat, mkdir, rm, rmdir};
+// Import des commandes FAT disponibles (les autres seront décommentées plus tard)
+use crate::fat::ls;
 
 /// Affiche le titre ASCII et le message d'accueil au boot du système.
 pub fn title() {
@@ -79,11 +79,9 @@ pub fn verif_message(input: &str) {
     }
     // ===== Commandes FAT (sans arguments) =====
 
-    // Commande : ls — liste les fichiers (sans argument)
+    // Commande : ls — liste les fichiers du répertoire racine
     else if input == "ls" {
-        // TODO: décommenter quand le module fat sera fait
-        // ls();
-        println!("[fat] commande 'ls' pas encore implementee");
+        ls();
     }
     // Commandes sans argument : affichent un message d'erreur d'utilisation de la commande
     else if input == "touch" {
