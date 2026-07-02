@@ -1,3 +1,5 @@
+extern crate alloc;
+
 use crate::gdt;
 use crate::hlt_loop;
 use crate::print;
@@ -56,10 +58,13 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
             );
     }
 
-    // Définition du tampon qui stockera les entrées utilisateur
+    // Définition du tampon qui stockera les entrées utilisateur et son historique (tas)
     lazy_static! {
         static ref INPUT_TEXT: Mutex<[u8; 256]> = Mutex::new([0u8; 256]);
         static ref INPUT_LEN: Mutex<usize> = Mutex::new(0);
+        static ref HISTORY: Mutex<alloc::vec::Vec<alloc::string::String>> =
+            Mutex::new(alloc::vec::Vec::new());
+        static ref HISTORY_INDEX: Mutex<Option<usize>> = Mutex::new(None);
     }
 
     let mut keyboard = KEYBOARD.lock();
@@ -101,7 +106,9 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
                                 if !prefixe.is_empty() {
                                     let mut completion_buf = [0u8; 12];
                                     // Recherche de correspondance uniquement dans le répertoire racine
-                                    if let Some(longueur) = crate::fat::completer_nom(prefixe, &mut completion_buf) {
+                                    if let Some(longueur) =
+                                        crate::fat::completer_nom(prefixe, &mut completion_buf)
+                                    {
                                         completion_data = Some((prefixe.len(), completion_buf));
                                     }
                                 }
@@ -156,6 +163,22 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
                         let input_str =
                             core::str::from_utf8(&input_text[..*INPUT_LEN.lock()]).unwrap_or("");
 
+                        // Enregistrement de la commande non vide dans l'historique.
+                        // APPEL À L'ALLOCATEUR GLOBAL (FixedSizeBlockAllocator) :
+                        // 1. "trimmed.into()" : Convertit &str en String -> Allocation de la commande sur le tas (Heap).
+                        // 2. "hist.push()" : Insère la String dans le Vec -> Réallocation potentielle du vecteur sur le tas.
+                        let trimmed = input_str.trim();
+                        if !trimmed.is_empty() {
+                            let mut hist = HISTORY.lock();
+                            // Évite de stocker deux commandes identiques de suite
+                            if hist.is_empty() || hist.last().unwrap().as_str() != trimmed {
+                                hist.push(trimmed.into());
+                            }
+                        }
+
+                        // Réinitialisation de l'index de navigation dans l'historique
+                        *HISTORY_INDEX.lock() = None;
+
                         // Envoi au processeur de commande du Shell
                         verif_message(input_str);
 
@@ -163,8 +186,86 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
                         *INPUT_LEN.lock() = 0;
                     }
                 }
-                // Touches spéciales/brutes (Shift, Ctrl, flèches, etc.) -> on ne fait rien
-                DecodedKey::RawKey(_key) => {}
+                // Touches spéciales/brutes (Shift, Ctrl, flèches, etc.)
+                DecodedKey::RawKey(key) => {
+                    match key {
+                        pc_keyboard::KeyCode::ArrowUp => {
+                            let hist = HISTORY.lock();
+                            let mut hist_idx = HISTORY_INDEX.lock();
+
+                            if !hist.is_empty() {
+                                // Détermination du nouvel index à charger (on remonte dans l'historique)
+                                let target_idx = match *hist_idx {
+                                    None => hist.len() - 1, // On part du plus récent
+                                    Some(idx) => {
+                                        if idx > 0 {
+                                            idx - 1
+                                        } else {
+                                            0
+                                        }
+                                    }
+                                };
+                                *hist_idx = Some(target_idx);
+
+                                let cmd = &hist[target_idx];
+                                let mut input_text = INPUT_TEXT.lock();
+                                let mut input_len = INPUT_LEN.lock();
+
+                                // 1. Effacer graphiquement le texte saisi actuel
+                                for _ in 0..*input_len {
+                                    print!("\x08");
+                                }
+
+                                // 2. Remplacer et réafficher le texte de la commande historique
+                                *input_len = 0;
+                                for &byte in cmd.as_bytes() {
+                                    if *input_len < input_text.len() {
+                                        input_text[*input_len] = byte;
+                                        *input_len += 1;
+                                        print!("{}", byte as char);
+                                    }
+                                }
+                            }
+                        }
+                        pc_keyboard::KeyCode::ArrowDown => {
+                            let hist = HISTORY.lock();
+                            let mut hist_idx = HISTORY_INDEX.lock();
+
+                            if !hist.is_empty() {
+                                if let Some(idx) = *hist_idx {
+                                    let mut input_text = INPUT_TEXT.lock();
+                                    let mut input_len = INPUT_LEN.lock();
+
+                                    // 1. Effacer graphiquement le texte saisi actuel
+                                    for _ in 0..*input_len {
+                                        print!("\x08");
+                                    }
+                                    *input_len = 0;
+
+                                    if idx + 1 < hist.len() {
+                                        // On descend vers une commande plus récente
+                                        let target_idx = idx + 1;
+                                        *hist_idx = Some(target_idx);
+                                        let cmd = &hist[target_idx];
+
+                                        // Réafficher la commande
+                                        for &byte in cmd.as_bytes() {
+                                            if *input_len < input_text.len() {
+                                                input_text[*input_len] = byte;
+                                                *input_len += 1;
+                                                print!("{}", byte as char);
+                                            }
+                                        }
+                                    } else {
+                                        // On a dépassé la commande la plus récente : on vide la ligne
+                                        *hist_idx = None;
+                                    }
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
             }
         }
     }
