@@ -8,7 +8,7 @@ use crate::{print, println};
 use x86_64::instructions::hlt;
 
 // Import des commandes FAT disponibles
-use crate::fat::{ls, cat, touch, mkdir};
+use crate::fat::{ls, cat, touch, mkdir, rm, rmdir};
 
 /// Affiche le titre ASCII et le message d'accueil au boot du système.
 pub fn title() {
@@ -147,11 +147,9 @@ pub fn verif_message(input: &str) {
     else if input.starts_with("rm ") {
         let name = input[3..].trim();
         if !name.is_empty() {
-            // TODO: décommenter quand le module fat sera fait
-            // unsafe {
-            //     rm(name);
-            // }
-            println!("[fat] commande 'rm' pas encore implementee");
+            unsafe {
+                rm(name);
+            }
         } else {
             println!("Erreur: usage -> rm <nom_fichier>");
         }
@@ -160,11 +158,9 @@ pub fn verif_message(input: &str) {
     else if input.starts_with("rmdir ") {
         let name = input[6..].trim();
         if !name.is_empty() {
-            // TODO: décommenter quand le module fat sera fait
-            // unsafe {
-            //     rmdir(name);
-            // }
-            println!("[fat] commande 'rmdir' pas encore implementee");
+            unsafe {
+                rmdir(name);
+            }
         } else {
             println!("Erreur: usage -> rmdir <nom_dossier>");
         }
