@@ -414,7 +414,7 @@ pub fn cat(file_name: &str) {
                 // Récupération de l'adresse du cluster suivant dans la table FAT
                 current_cluster = lire_pointeur_fat(current_cluster, fat_offset);
             }
-            println!(); // Saut de ligne esthétique final
+            println!();
             return;
         }
     }
@@ -425,14 +425,14 @@ pub fn cat(file_name: &str) {
 // SYSTEME DE COMPLETION AUTOMATIQUE (TAB)
 //---------------------------------------------------------------------------------------------------------------------------------
 
-/// Recherche un fichier dans la racine dont le début du nom correspond au préfixe saisi, pour l'autocomplétion.
+/// Recherche un fichier dans la racine dont le début du nom correspond au préfixe saisi pour l'autocomplétion
 ///
 /// # Arguments
-/// * `prefixe` - Le début du nom saisi par l'utilisateur (ex: "EX").
-/// * `nom_complet_out` - Buffer d'écriture pour renvoyer le nom complété s'il est unique.
+/// * `prefixe` - Le début du nom saisi par l'utilisateur (ex: "EX")
+/// * `nom_complet_out` - Buffer d'écriture pour renvoyer le nom complété s'il est unique
 ///
 /// # Retour
-/// * `Some(usize)` - Longueur du nom complété en octets en cas de correspondance UNIQUE.
+/// * `Some(usize)` - Longueur du nom complété en octets en cas de correspondance UNIQUE
 /// * `None` - Si aucun ou plusieurs fichiers correspondent.
 pub fn completer_nom(prefixe: &str, nom_complet_out: &mut [u8]) -> Option<usize> {
     let cluster_size = obtenir_taille_cluster();
@@ -558,12 +558,12 @@ pub unsafe fn touch(name: &str, data: &[u8]) {
         current_cluster = next_cluster;
     }
 
-    // 5. Enregistrement final de la fiche descriptive (Directory Entry) du fichier dans la racine
+    // 5. Enregistrement de la Directory Entry du fichier dans la racine
     ecrire_entree_repertoire(
         root_directory,
         entry_offset,
         &formatted_name,
-        0x20, // Attribut : archive (fichier normal)
+        0x20,
         first_cluster,
         data.len() as u32,
     );
@@ -614,7 +614,7 @@ pub unsafe fn mkdir(name: &str) {
         }
     };
 
-    // 4. Initialisation du nouveau cluster (remplissage à zéro)
+    // 4. Initialisation du nouveau cluster
     let offset = calculate_cluster_offset(data_offset, first_cluster);
     let cluster_data = &mut DISK_IMAGE[offset..offset + cluster_size];
     cluster_data.fill(0);
@@ -691,7 +691,7 @@ pub unsafe fn rmdir(name: &str) {
             let cluster_size = obtenir_taille_cluster();
             let dir_cluster = entry.first_cluster();
 
-            // 2. VÉRIFICATION DE SÉCURITÉ : Le dossier doit être VIDE.
+            // 2. Le dossier doit être vide
             // On parcourt son cluster de données. S'il contient autre chose que "." et "..", on annule.
             let dir_offset = calculate_cluster_offset(data_offset, dir_cluster);
             let dir_data = &DISK_IMAGE[dir_offset..dir_offset + cluster_size];

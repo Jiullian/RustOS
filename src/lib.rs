@@ -19,7 +19,6 @@ pub mod printfunc;
 
 pub mod task;
 
-
 #[cfg(test)]
 use bootloader::{BootInfo, entry_point};
 
@@ -97,7 +96,7 @@ pub fn init() {
     // Chargement de l'image disque en mémoire
     disk::initialize_disk_image();
 
-    // Initialisation du matériel
+    // Initialisation de gdt/interupts
     gdt::init();
     interrupts::init_idt();
     unsafe { interrupts::PICS.lock().initialize() };
