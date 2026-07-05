@@ -13,9 +13,14 @@ use crate::{print, println};
 //---------------------------------------------------------------------------------------------------------------------------------
 // CONSTANTES & CONFIGURATION FAT32
 //---------------------------------------------------------------------------------------------------------------------------------
-// Table des attributs de fichiers format FAT32
-// - 0x10 : Dossier/Répertoire (Directory)
-// - 0x20 : Fichier d'archive normal (Archive)
+// Table des attributs de fichiers format FAT32 utilisés dans le code :
+// - 0x0F : Attribut LFN (Long File Name) -> utilisé pour filtrer et ignorer les noms longs
+// - 0x10 : Dossier/Répertoire (Directory) -> utilisé pour identifier et créer des dossiers
+// - 0x20 : Fichier d'archive normal (Archive) -> utilisé pour créer des fichiers normaux
+//
+// Marqueurs d'état stockés sur le premier caractère du nom (name[0]) :
+// - 0x00 : Entrée vide et jamais utilisée (Fin du répertoire)
+// - 0xE5 : Entrée libérée / fichier supprimé (Rendu invisible pour l'utilisateur)
 //---------------------------------------------------------------------------------------------------------------------------------
 
 //---------------------------------------------------------------------------------------------------------------------------------
