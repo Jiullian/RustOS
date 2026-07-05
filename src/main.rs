@@ -5,9 +5,10 @@
 #![test_runner(RustOS::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
+use RustOS::println;
+use RustOS::task::{Task, executor::Executor, keyboard};
 use bootloader::{BootInfo, entry_point};
 use core::panic::PanicInfo;
-use RustOS::println;
 extern crate alloc;
 
 entry_point!(kernel_main);
@@ -31,8 +32,19 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     #[cfg(test)]
     test_main();
 
-    // Boucle d'attente du CPU (attend les interruptions clavier)
-    RustOS::hlt_loop();
+    let mut executor = Executor::new();
+    executor.spawn(Task::new(example_task()));
+    executor.spawn(Task::new(keyboard::print_keypresses()));
+    executor.run();
+}
+
+async fn async_number() -> u32 {
+    42
+}
+
+async fn example_task() {
+    let number = async_number().await;
+    println!("async number: {}", number);
 }
 
 // Fonction appelée lors de chaque panic.

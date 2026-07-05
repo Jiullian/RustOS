@@ -17,6 +17,9 @@ pub mod disk;
 pub mod fat;
 pub mod printfunc;
 
+pub mod task;
+
+
 #[cfg(test)]
 use bootloader::{BootInfo, entry_point};
 
