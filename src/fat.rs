@@ -13,12 +13,7 @@ use crate::{print, println};
 //---------------------------------------------------------------------------------------------------------------------------------
 // CONSTANTES & CONFIGURATION FAT32
 //---------------------------------------------------------------------------------------------------------------------------------
-// Table des attributs de fichiers standard du format FAT32.
-// Chaque fichier ou dossier possède un octet d'attribut à l'offset 11 de sa structure :
-// - 0x01 : Lecture seule (Read-Only)
-// - 0x02 : Fichier caché (Hidden)
-// - 0x04 : Fichier système (System)
-// - 0x08 : Nom du volume (Volume Label) - non utilisé ici
+// Table des attributs de fichiers format FAT32
 // - 0x10 : Dossier/Répertoire (Directory)
 // - 0x20 : Fichier d'archive normal (Archive)
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -91,10 +86,10 @@ fn trouver_entree_libre(repertoire: &[u8], taille_cluster: usize) -> Option<usiz
 
 /// Détermine dynamiquement la taille en octets d'un cluster en lisant les paramètres du disque.
 ///
-/// Cette formule repose sur le BIOS Parameter Block (BPB) de l'image FAT32 :
-/// - Les octets 11-12 indiquent le nombre d'octets par secteur (Bytes Per Sector, souvent 512).
-/// - L'octet 13 indique le nombre de secteurs par cluster (Sectors Per Cluster, ex: 8).
-/// Taille du cluster = (Octets par secteur) * (Secteurs par cluster).
+/// repose sur le BIOS Parameter Block (BPB) de l'image FAT32 :
+/// - Les octets 11-12 indiquent le nombre d'octets par secteur
+/// - L'octet 13 indique le nombre de secteurs par cluster
+/// Taille du cluster = (Octets par secteur) * (Secteurs par cluster)
 fn obtenir_taille_cluster() -> usize {
     unsafe {
         // Lecture d'un entier 16 bits en Little Endian aux offsets 11-12
@@ -106,7 +101,7 @@ fn obtenir_taille_cluster() -> usize {
     }
 }
 
-/// Récupère une référence partagée (immuable) sur le répertoire racine en mémoire.
+/// Récupère une référence partagée sur le répertoire racine en mémoire.
 ///
 /// # Arguments
 /// * `cluster_size` - Taille du cluster en octets.
