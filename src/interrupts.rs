@@ -58,7 +58,7 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
             );
     }
 
-    // Définition du tampon qui stockera les entrées utilisateur et son historique (tas)
+    // Définition du tampon (structure) qui stockera les entrées utilisateur et son historique (tas)
     lazy_static! {
         static ref INPUT_TEXT: Mutex<[u8; 256]> = Mutex::new([0u8; 256]);
         static ref INPUT_LEN: Mutex<usize> = Mutex::new(0);
@@ -87,16 +87,16 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
                     }
                     // Gestion de la tabulation (Autocomplétion)
                     else if character == '\t' {
-                        // Option qui contiendra la longueur et le buffer complété après avoir relâché l'emprunt immuable
                         let mut completion_data: Option<(usize, [u8; 12])> = None;
 
-                        // Portée isolée pour l'analyse immuable (évite les conflits d'emprunt avec les écritures futures)
                         {
                             let input_text = INPUT_TEXT.lock();
                             let input_len = INPUT_LEN.lock();
 
+                            // Étape 1 : Analyse de la saisie utilisateur
+                            // On convertit les octets saisis en chaîne de caractères UTF-8.
                             if let Ok(input_str) = core::str::from_utf8(&input_text[..*input_len]) {
-                                // On extrait le dernier mot saisi
+                                // On extrait le dernier mot saisi en cherchant le dernier espace (' ').
                                 let prefixe = if let Some(space_idx) = input_str.rfind(' ') {
                                     &input_str[space_idx + 1..]
                                 } else {
@@ -105,7 +105,11 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
 
                                 if !prefixe.is_empty() {
                                     let mut completion_buf = [0u8; 12];
-                                    // Recherche de correspondance uniquement dans le répertoire racine
+
+                                    // Étape 2 : Recherche disque via fat::completer_nom
+                                    // Cette fonction parcourt la racine, cherche les fichiers commençant par *prefixe* (insensible à la casse)
+                                    // Si elle trouve UNE SEULE correspondance unique, elle renvoie sa longueur et remplit completion_buf
+                                    // S'il y a 0 ou plusieurs fichiers (ex: "T1.TXT" et "T2.TXT" pour "T"), elle renvoie None
                                     if let Some(longueur) =
                                         crate::fat::completer_nom(prefixe, &mut completion_buf)
                                     {
@@ -115,20 +119,23 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
                             }
                         }
 
-                        // Si une correspondance unique a été trouvée, on procède à l'écriture (emprunt mutable)
+                        // Étape 3 : Écriture graphique et mémoire de la complétion
+                        // Si une correspondance unique a été validée :
                         if let Some((prefix_len, completion_buf)) = completion_data {
                             let mut input_text = INPUT_TEXT.lock();
                             let mut input_len = INPUT_LEN.lock();
 
-                            // 1. Effacer le préfixe saisi
+                            // On efface le préfixe saisi à l'écran en envoyant le caractère 'Retour arrière' (\x08)
+                            // autant de fois que la longueur du préfixe, et on décrémente INPUT_LEN.
                             for _ in 0..prefix_len {
                                 if *input_len > 0 {
                                     *input_len -= 1;
-                                    print!("\x08"); // Retour arrière sur le terminal VGA
+                                    print!("\x08"); // Efface un caractère à l'écran VGA
                                 }
                             }
 
-                            // 2. Écrire le nom complet récupéré depuis le répertoire racine
+                            // On écrit le nom complet trouvé dans notre tampon de saisie RAM (INPUT_TEXT)
+                            // et on l'affiche caractère par caractère sur le terminal VGA.
                             let mut completion_len = 0;
                             while completion_len < 12 && completion_buf[completion_len] != 0 {
                                 let byte = completion_buf[completion_len];
@@ -194,9 +201,11 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
                             let mut hist_idx = HISTORY_INDEX.lock();
 
                             if !hist.is_empty() {
-                                // Détermination du nouvel index à charger (on remonte dans l'historique)
+                                // Étape 1 : Calcul de l'index de navigation dans l'historique
+                                // Si l'index est None (première pression), on commence par le plus récent : hist.len() - 1.
+                                // Sinon, on remonte d'un niveau (idx - 1), avec un minimum à 0 (le plus ancien).
                                 let target_idx = match *hist_idx {
-                                    None => hist.len() - 1, // On part du plus récent
+                                    None => hist.len() - 1,
                                     Some(idx) => {
                                         if idx > 0 {
                                             idx - 1
@@ -211,12 +220,15 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
                                 let mut input_text = INPUT_TEXT.lock();
                                 let mut input_len = INPUT_LEN.lock();
 
-                                // 1. Effacer graphiquement le texte saisi actuel
+                                // Étape 2 : Effacement de la saisie actuelle
+                                // On envoie des codes retour arrière '\x08' pour vider la ligne à l'écran VGA.
                                 for _ in 0..*input_len {
                                     print!("\x08");
                                 }
 
-                                // 2. Remplacer et réafficher le texte de la commande historique
+                                // Étape 3 : Remplacement par la commande historique
+                                // On réinitialise INPUT_LEN et on copie les caractères de la commande historique
+                                // dans le tampon RAM de saisie (INPUT_TEXT) tout en les réaffichant à l'écran.
                                 *input_len = 0;
                                 for &byte in cmd.as_bytes() {
                                     if *input_len < input_text.len() {
@@ -232,23 +244,25 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
                             let mut hist_idx = HISTORY_INDEX.lock();
 
                             if !hist.is_empty() {
+                                // Étape 1 : Calcul de l'index de navigation
+                                // La flèche du bas ne fait quelque chose que si on est déjà en train de parcourir l'historique (Some(idx)).
                                 if let Some(idx) = *hist_idx {
                                     let mut input_text = INPUT_TEXT.lock();
                                     let mut input_len = INPUT_LEN.lock();
 
-                                    // 1. Effacer graphiquement le texte saisi actuel
+                                    // Effacement de la saisie actuelle à l'écran
                                     for _ in 0..*input_len {
                                         print!("\x08");
                                     }
                                     *input_len = 0;
 
+                                    // Si on peut encore descendre vers une commande plus récente
                                     if idx + 1 < hist.len() {
-                                        // On descend vers une commande plus récente
                                         let target_idx = idx + 1;
                                         *hist_idx = Some(target_idx);
                                         let cmd = &hist[target_idx];
 
-                                        // Réafficher la commande
+                                        // Copie de la commande et réaffichage à l'écran
                                         for &byte in cmd.as_bytes() {
                                             if *input_len < input_text.len() {
                                                 input_text[*input_len] = byte;
@@ -257,7 +271,8 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
                                             }
                                         }
                                     } else {
-                                        // On a dépassé la commande la plus récente : on vide la ligne
+                                        // Si on a dépassé la commande la plus récente :
+                                        // On réinitialise l'index à None, laissant une ligne vide prête pour une nouvelle saisie.
                                         *hist_idx = None;
                                     }
                                 }
